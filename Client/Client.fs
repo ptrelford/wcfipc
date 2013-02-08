@@ -5,7 +5,7 @@ open System.Windows.Forms
 
 let createChannel() =
    let channelFactory = 
-      let binding = NetNamedPipeBinding()   
+      let binding = NetNamedPipeBinding()        
       binding.MaxReceivedMessageSize <- 65536L * 4096L     
       let endpoint = EndpointAddress("net.pipe://localhost/joule/")      
       new ChannelFactory<IService>(binding, endpoint)
@@ -42,8 +42,13 @@ let main argv =
                try 
                   let channel, resources = createChannel()
                   use resources = resources
-                  let xs = channel.GetValues [|for i = 1 to 1000 do yield String('X', 100)|]                  
-                  Console.WriteLine(sprintf "%d %d" !pollCount xs.Length)
+                  let keys = [|String('X', 40)|]
+                  let xs = channel.GetValues { Topics = [|for i = 1 to 1000 do yield { Topic.Keys = keys } |] }                  
+                  let text = 
+                    xs.Values 
+                    |> Array.map (fun x -> x.ToObject().ToString())
+                    |> String.concat ","
+                  Console.WriteLine(sprintf "%d %d %s" !pollCount xs.Values.Length text)
                   with ex -> Console.WriteLine(ex)                                     
          } |> Async.StartDisposable
   

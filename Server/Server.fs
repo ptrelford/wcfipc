@@ -12,14 +12,23 @@ module Operators =
 type Service () =      
    interface IService with
       member this.GetValues(xs) = 
-         Console.WriteLine("GetValues called")
-         [|for i = 1 to 1000 do yield [|box i; box (String('a', 30))|] |]
+         Console.WriteLine("GetValues called")         
+         { Values = 
+            [|for i = 1 to xs.Topics.Length do 
+                yield ExcelValue.Of(String('a', 50)) 
+                yield ExcelValue.Of(99.99M)
+                yield ExcelValue.Of(0.001)
+                yield ExcelValue.Of(true)
+                yield ExcelValue.Of(DateTime.Now)
+            |] 
+        }
 
 type ConsoleMessageTracer() =
-   let trace (msg:Message) = Console.WriteLine(msg)      
+   let trace (msg:Message) = Console.WriteLine(msg.ToString().Length)      
    interface IDispatchMessageInspector with
       member __.AfterReceiveRequest(request:byref<Message>, channel:IClientChannel, instanceContext:InstanceContext) =
-         let msg = request.CreateBufferedCopy(Int32.MaxValue).CreateMessage()
+         let buffer = request.CreateBufferedCopy(Int32.MaxValue)
+         let msg = buffer.CreateMessage()
          trace msg
          request <- msg
          null
@@ -65,8 +74,8 @@ let main argv =
    let pipe = Uri "net.pipe://localhost"
    let serviceHost = new ServiceHost(service, pipe)   
   
-   let binding = NetNamedPipeBinding()   
-   binding.MaxReceivedMessageSize <- 65536L * 4096L   
+   let binding = NetNamedPipeBinding()      
+   //binding.MaxReceivedMessageSize <- 65536L * 4096L   
 
    let endpoint =
       serviceHost.AddServiceEndpoint(typeof<IService>, binding, "joule")      
@@ -83,13 +92,11 @@ let main argv =
          System.Diagnostics.Debug.WriteLine(ex)
          reraise ()
 
-
    Console.WriteLine("Server Started")
-
    Console.ReadLine() |> ignore
 
    if opened then 
-            serviceHost.Close()
-            (serviceHost :> IDisposable).Dispose()
+      serviceHost.Close()
+      (serviceHost :> IDisposable).Dispose()
    
    0
